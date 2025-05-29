@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/yourusername/mini-kiosk-central-gateway/internal/database"
+	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/database"
 )
 
 func main() {

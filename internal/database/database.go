@@ -22,9 +22,9 @@ func DefaultConfig() Config {
 	return Config{
 		Host:     "localhost",
 		Port:     5432,
-		User:     "postgres",
-		Password: "postgres",
-		DBName:   "kiosk_gateway",
+		User:     "harrywijaya",
+		Password: "",
+		DBName:   "central_gateway_mini_kiosk",
 		SSLMode:  "disable",
 	}
 }
@@ -32,9 +32,17 @@ func DefaultConfig() Config {
 // Connect establishes a connection to the database
 func Connect(config Config) (*sql.DB, error) {
 	connStr := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		config.Host, config.Port, config.User, config.Password, config.DBName, config.SSLMode,
+		"host=%s port=%d user=%s dbname=%s sslmode=%s",
+		config.Host, config.Port, config.User, config.DBName, config.SSLMode,
 	)
+	
+	// Only add password if it's not empty
+	if config.Password != "" {
+		connStr = fmt.Sprintf(
+			"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+			config.Host, config.Port, config.User, config.Password, config.DBName, config.SSLMode,
+		)
+	}
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {

@@ -20,9 +20,9 @@ type MigrationConfig struct {
 // DefaultMigrationConfig returns a default migration configuration
 func DefaultMigrationConfig() MigrationConfig {
 	return MigrationConfig{
-		URL:      "jdbc:postgresql://localhost:5432/kiosk_gateway",
-		User:     "postgres",
-		Password: "postgres",
+		URL:      "jdbc:postgresql://localhost:5432/central_gateway_mini_kiosk",
+		User:     "harrywijaya",
+		Password: "",
 		Location: "filesystem:db/migrations",
 		Command:  "migrate",
 	}

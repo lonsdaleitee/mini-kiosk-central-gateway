@@ -17,6 +17,8 @@ This project uses Flyway for database migration to manage PostgreSQL schema, inc
    ```bash
    docker-compose up -d
    ```
+   
+   (Or use your existing local PostgreSQL instance)
 
 2. Run database migrations:
    ```bash
@@ -58,3 +60,20 @@ make validate
 # Build and run the application
 make run
 ```
+
+### Flyway Configuration
+
+The project is configured to use:
+- Database: `central_gateway_mini_kiosk`
+- User: `harrywijaya` (current system user)
+- Migration files location: `db/migrations/`
+
+### Migration Examples
+
+The project includes examples of:
+- Table creation with UUID support
+- Custom functions and triggers
+- Database views
+- Indexes
+
+All PostgreSQL objects (tables, functions, triggers, views, etc.) are fully supported through Flyway's SQL-based migrations.
