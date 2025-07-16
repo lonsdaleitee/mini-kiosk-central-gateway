@@ -1,4 +1,4 @@
-.PHONY: setup migrate clean info validate new-migration new-repeatable build run test
+.PHONY: setup migrate clean info validate new-migration new-repeatable build run test gateway-build gateway-run gateway-test
 
 # Database migration commands
 migrate:
@@ -42,3 +42,18 @@ test:
 setup:
 	go mod tidy
 	go get github.com/lib/pq
+
+# Gateway application commands
+gateway-build:
+	go build -o bin/gateway ./cmd/server
+
+gateway-run: gateway-build
+	./bin/gateway
+
+gateway-test:
+	go test ./...
+
+gateway-dev: migrate gateway-run
+
+gateway-clean:
+	rm -rf bin/

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: central_gateway_mini_kiosk_db
+    environment:
+      POSTGRES_USER: harrywijaya
+      POSTGRES_PASSWORD: ""
+      POSTGRES_DB: central_gateway_mini_kiosk
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U harrywijaya -d central_gateway_mini_kiosk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

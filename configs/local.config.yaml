@@ -1,0 +1,39 @@
+server:
+  port: 8080
+  host: "localhost"
+  read_timeout: 30
+  write_timeout: 30
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "harrywijaya"
+  password: ""
+  dbname: "central_gateway_mini_kiosk"
+  sslmode: "disable"
+
+services:
+  auth_service:
+    base_url: "http://localhost:8081"
+    timeout: 30
+  order_service:
+    base_url: "http://localhost:8082"
+    timeout: 30
+  inventory_service:
+    base_url: "http://localhost:8083"
+    timeout: 30
+  payment_service:
+    base_url: "http://localhost:8084"
+    timeout: 30
+
+gin:
+  mode: "debug"
+
+flyway:
+  url: "jdbc:postgresql://localhost:5432/central_gateway_mini_kiosk"
+  user: "harrywijaya"
+  password:
+  locations: "filesystem:db/migrations"
+  connectRetries: 3
+  outOfOrder: false
+  validateMigrationNaming: true

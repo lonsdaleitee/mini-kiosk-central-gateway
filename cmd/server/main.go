@@ -5,12 +5,28 @@ import (
 	"log"
 	"os"
 
+	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/config"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/database"
+	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/router"
+	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/server"
 )
 
 func main() {
-	// Initialize database configuration
-	dbConfig := database.DefaultConfig()
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Initialize database configuration from config
+	dbConfig := database.Config{
+		Host:     cfg.Database.Host,
+		Port:     cfg.Database.Port,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		DBName:   cfg.Database.DBName,
+		SSLMode:  cfg.Database.SSLMode,
+	}
 
 	// Override configuration from environment variables if provided
 	if host := os.Getenv("DB_HOST"); host != "" {
@@ -31,6 +47,7 @@ func main() {
 	migrationConfig.URL = dbConfig.GetFlywayDSN()
 	migrationConfig.User = dbConfig.User
 	migrationConfig.Password = dbConfig.Password
+	migrationConfig.Location = cfg.Flyway.Locations
 
 	// Run database migrations
 	fmt.Println("Running database migrations...")
@@ -48,8 +65,14 @@ func main() {
 
 	fmt.Println("Connected to database successfully")
 
-	// Start your application...
-	fmt.Println("Starting mini-kiosk central gateway...")
+	// Set up router
+	r := router.SetupRouter(db)
 
-	// Add your application code here
+	// Create and start server
+	srv := server.NewServer(r, cfg)
+
+	fmt.Printf("Starting mini-kiosk central gateway on port %d...\n", cfg.Server.Port)
+	if err := srv.Start(); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }
