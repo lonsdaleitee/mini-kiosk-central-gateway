@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/config"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/database"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/router"
@@ -16,6 +17,12 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	if cfg.Gin.Mode == "debug" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	// Initialize database configuration from config
@@ -48,6 +55,7 @@ func main() {
 	migrationConfig.User = dbConfig.User
 	migrationConfig.Password = dbConfig.Password
 	migrationConfig.Location = cfg.Flyway.Locations
+	migrationConfig.OutOfOrder = cfg.Flyway.OutOfOrder
 
 	// Run database migrations
 	fmt.Println("Running database migrations...")

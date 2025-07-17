@@ -37,3 +37,4 @@ flyway:
   connectRetries: 3
   outOfOrder: false
   validateMigrationNaming: true
+  cleanDisabled: true

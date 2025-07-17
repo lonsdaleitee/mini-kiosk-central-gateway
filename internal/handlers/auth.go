@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -63,7 +64,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	// Check if user already exists by username or email
 	var existingUserID string
-	checkQuery := `SELECT id FROM users WHERE username = $1 OR email = $2 LIMIT 1`
+	checkQuery := `SELECT id FROM "user" WHERE username = $1 OR email = $2 LIMIT 1`
 	err := h.db.QueryRow(checkQuery, req.Username, req.Email).Scan(&existingUserID)
 
 	if err != sql.ErrNoRows {
@@ -73,6 +74,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 				"error": "User with this username or email already exists",
 			})
 			return
+		}
+		if gin.Mode() == "debug" {
+			fmt.Printf("SELECT id FROM user WHERE username = %s OR email = %s LIMIT 1\n", req.Username, req.Email)
+			fmt.Printf("Error found during checking to database : %s\n", err)
 		}
 		// Database error
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -93,12 +98,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	// Insert new user
 	var userID string
 	insertQuery := `
-		INSERT INTO users (username, email, first_name, last_name, password_hash) 
+		INSERT INTO "user" (username, email, first_name, last_name, password_hash) 
 		VALUES ($1, $2, $3, $4, $5) 
 		RETURNING id`
 
 	err = h.db.QueryRow(insertQuery, req.Username, req.Email, req.FirstName, req.LastName, string(hashedPassword)).Scan(&userID)
 	if err != nil {
+		if gin.Mode() == "debug" {
+			fmt.Printf("Error during inserting to database : %s\n", err)
+			fmt.Printf("Query executed : %s\n", insertQuery)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create user",
 		})

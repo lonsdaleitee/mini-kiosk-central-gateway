@@ -80,7 +80,7 @@ The `/api/v1/auth/register` endpoint has been implemented to handle user registr
 The handler requires the following database schema:
 
 ```sql
-CREATE TABLE users (
+CREATE TABLE user (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,

@@ -4,6 +4,7 @@ go 1.24.5
 
 require (
 	github.com/gin-gonic/gin v1.10.1
+	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/spf13/viper v1.20.1
 	golang.org/x/crypto v0.40.0
@@ -22,7 +23,6 @@ require (
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

@@ -68,14 +68,26 @@ type FlywayConfig struct {
 func Load() (*Config, error) {
 	viper.SetConfigName("local.config")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("../../configs")
+	viper.AddConfigPath("./configs")     // From project root
+	viper.AddConfigPath("../configs")    // From cmd/server
+	viper.AddConfigPath("../../configs") // From internal/config (current location)
+	viper.AddConfigPath(".")             // Current directory
+
+	// Enable environment variable support
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("GATEWAY") // Environment variables will be prefixed with GATEWAY_
+
+	// Set default values
+	setDefaults()
 
 	// Read config file if it exists
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("error reading config file: %w", err)
 		}
-		log.Println("No config file found")
+		log.Println("No config file found, using defaults and environment variables")
+	} else {
+		log.Printf("Using config file: %s", viper.ConfigFileUsed())
 	}
 
 	var config Config
@@ -84,4 +96,24 @@ func Load() (*Config, error) {
 	}
 
 	return &config, nil
+}
+
+// setDefaults sets default configuration values
+func setDefaults() {
+	// Server defaults
+	viper.SetDefault("server.port", 8080)
+	viper.SetDefault("server.host", "localhost")
+	viper.SetDefault("server.read_timeout", 30)
+	viper.SetDefault("server.write_timeout", 30)
+
+	// Database defaults
+	viper.SetDefault("database.host", "localhost")
+	viper.SetDefault("database.port", 5432)
+	viper.SetDefault("database.user", "harrywijaya")
+	viper.SetDefault("database.password", "")
+	viper.SetDefault("database.dbname", "central_gateway_mini_kiosk")
+	viper.SetDefault("database.sslmode", "disable")
+
+	// Gin defaults
+	viper.SetDefault("gin.mode", "debug")
 }

@@ -10,21 +10,23 @@ import (
 
 // MigrationConfig stores Flyway configuration options
 type MigrationConfig struct {
-	URL      string
-	User     string
-	Password string
-	Location string
-	Command  string // "migrate", "clean", "info", etc.
+	URL        string
+	User       string
+	Password   string
+	Location   string
+	Command    string // "migrate", "clean", "info", etc.
+	OutOfOrder bool   // Allow out-of-order migrations
 }
 
 // DefaultMigrationConfig returns a default migration configuration
 func DefaultMigrationConfig() MigrationConfig {
 	return MigrationConfig{
-		URL:      "jdbc:postgresql://localhost:5432/central_gateway_mini_kiosk",
-		User:     "harrywijaya",
-		Password: "",
-		Location: "filesystem:db/migrations",
-		Command:  "migrate",
+		URL:        "jdbc:postgresql://localhost:5432/central_gateway_mini_kiosk",
+		User:       "harrywijaya",
+		Password:   "",
+		Location:   "filesystem:db/migrations",
+		Command:    "migrate",
+		OutOfOrder: true,
 	}
 }
 
@@ -39,7 +41,7 @@ func RunFlyway(config MigrationConfig) error {
 	// Make sure the migration directory exists
 	migrationsDir := strings.TrimPrefix(config.Location, "filesystem:")
 	migrationPath := filepath.Join(currentDir, migrationsDir)
-	
+
 	if _, err := os.Stat(migrationPath); os.IsNotExist(err) {
 		return fmt.Errorf("migrations directory does not exist: %s", migrationPath)
 	}
@@ -51,6 +53,10 @@ func RunFlyway(config MigrationConfig) error {
 		"-password=" + config.Password,
 		"-locations=" + config.Location,
 		config.Command,
+	}
+
+	if config.OutOfOrder {
+		args = append(args, "-outOfOrder=true")
 	}
 
 	// Execute Flyway command
@@ -83,5 +89,11 @@ func ValidateMigrations(config MigrationConfig) error {
 // InfoMigrations prints the details and status of all migrations
 func InfoMigrations(config MigrationConfig) error {
 	config.Command = "info"
+	return RunFlyway(config)
+}
+
+// MigrateDatabase runs all pending migrations
+func RepairMigrations(config MigrationConfig) error {
+	config.Command = "repair"
 	return RunFlyway(config)
 }

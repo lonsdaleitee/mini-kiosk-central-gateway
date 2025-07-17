@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,11 +9,33 @@ import (
 
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/config"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/router"
+	_ "github.com/lib/pq"
 )
 
+// setupTestDB creates a test database connection
+// For testing purposes, we'll use a mock or in-memory database
+func setupTestDB() *sql.DB {
+	// For testing, we can use a simple mock database connection
+	// In a real scenario, you might want to use a test database
+	// or a library like go-sqlmock for mocking
+
+	// Create a simple connection that won't be used for actual DB operations in these tests
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=test dbname=test sslmode=disable")
+	if err != nil {
+		// If we can't connect to a real database for testing, we'll need to handle this
+		// For now, returning nil and we'll need to modify the handlers to handle nil DB
+		return nil
+	}
+	return db
+}
+
 func TestHealthEndpoint(t *testing.T) {
-	// Set up the router
-	r := router.SetupRouter()
+	// Set up the router with test database
+	db := setupTestDB()
+	r := router.SetupRouter(db)
+	if db != nil {
+		defer db.Close()
+	}
 
 	// Create a test request
 	req, err := http.NewRequest("GET", "/health", nil)
@@ -47,8 +70,12 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestReadyEndpoint(t *testing.T) {
-	// Set up the router
-	r := router.SetupRouter()
+	// Set up the router with test database
+	db := setupTestDB()
+	r := router.SetupRouter(db)
+	if db != nil {
+		defer db.Close()
+	}
 
 	// Create a test request
 	req, err := http.NewRequest("GET", "/ready", nil)

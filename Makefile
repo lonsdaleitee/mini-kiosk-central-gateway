@@ -13,6 +13,9 @@ info:
 validate:
 	flyway -configFiles=flyway.conf validate
 
+repair:
+	flyway -configFiles=flyway.conf repair
+
 # Create a new migration file
 new-migration:
 	@read -p "Enter migration name: " name; \
