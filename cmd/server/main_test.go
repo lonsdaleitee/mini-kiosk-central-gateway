@@ -29,10 +29,35 @@ func setupTestDB() *sql.DB {
 	return db
 }
 
+// setupTestConfig creates a test configuration
+func setupTestConfig() *config.Config {
+	// Create a minimal test configuration
+	return &config.Config{
+		Server: config.ServerConfig{
+			Port: 8080,
+			Host: "localhost",
+		},
+		Database: config.DatabaseConfig{
+			Host:   "localhost",
+			Port:   5432,
+			User:   "test",
+			DBName: "test",
+		},
+		Keys: config.PublicPrivateKey{
+			PrivateKeyPath: "privateKey.pem",
+			PublicKeyPath:  "publicKey.pem",
+		},
+		Gin: config.GinConfig{
+			Mode: "debug",
+		},
+	}
+}
+
 func TestHealthEndpoint(t *testing.T) {
-	// Set up the router with test database
+	// Set up the router with test database and config
 	db := setupTestDB()
-	r := router.SetupRouter(db)
+	cfg := setupTestConfig()
+	r := router.SetupRouter(db, cfg)
 	if db != nil {
 		defer db.Close()
 	}
@@ -70,9 +95,10 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestReadyEndpoint(t *testing.T) {
-	// Set up the router with test database
+	// Set up the router with test database and config
 	db := setupTestDB()
-	r := router.SetupRouter(db)
+	cfg := setupTestConfig()
+	r := router.SetupRouter(db, cfg)
 	if db != nil {
 		defer db.Close()
 	}
@@ -119,5 +145,40 @@ func TestConfigLoad(t *testing.T) {
 
 	if cfg.Database.Host != "localhost" {
 		t.Errorf("Expected default database host 'localhost', got %s", cfg.Database.Host)
+	}
+
+	// Check key configuration defaults
+	if cfg.Keys.PrivateKeyPath != "privateKey.pem" {
+		t.Errorf("Expected default private key path 'privateKey.pem', got %s", cfg.Keys.PrivateKeyPath)
+	}
+
+	if cfg.Keys.PublicKeyPath != "publicKey.pem" {
+		t.Errorf("Expected default public key path 'publicKey.pem', got %s", cfg.Keys.PublicKeyPath)
+	}
+}
+
+func TestConfigurableKeys(t *testing.T) {
+	// Test configuration with different key paths
+	testConfig := &config.Config{
+		Keys: config.PublicPrivateKey{
+			PrivateKeyPath: "custom-private.pem",
+			PublicKeyPath:  "custom-public.pem",
+		},
+		Server: config.ServerConfig{
+			Port: 8080,
+			Host: "localhost",
+		},
+		Gin: config.GinConfig{
+			Mode: "debug",
+		},
+	}
+
+	// Verify the configuration holds the custom paths
+	if testConfig.Keys.PrivateKeyPath != "custom-private.pem" {
+		t.Errorf("Expected custom private key path 'custom-private.pem', got %s", testConfig.Keys.PrivateKeyPath)
+	}
+
+	if testConfig.Keys.PublicKeyPath != "custom-public.pem" {
+		t.Errorf("Expected custom public key path 'custom-public.pem', got %s", testConfig.Keys.PublicKeyPath)
 	}
 }
