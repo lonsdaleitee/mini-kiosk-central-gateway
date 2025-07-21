@@ -1,0 +1,43 @@
+server:
+  port: #"yourserverport"
+  host: #"yourhostport"
+  read_timeout: #"yourreadtimeoutconfig"
+  write_timeout: #"yourwritetimeoutconfig"
+
+database:
+  host: #"yourdatabaseservicehost"
+  port: #"yourdatabaseserviceport"
+  user: #"yourusername"
+  password: #"yourpassword"
+  dbname: #"yourdatabasename"
+
+services:
+  auth_service:
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
+  order_service:
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
+  inventory_service:
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
+  payment_service:
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
+
+gin:
+  mode: "debug" #replace with release, test or gin provided mode
+
+flyway:
+  url: #your database JDBC url
+  user: #your database username
+  password: #your database password
+  locations: #your migration files location
+  connectRetries: 
+  outOfOrder: false
+  validateMigrationNaming: true
+  cleanDisabled: true #should be true, change if only no other workaround
+
+authentication:
+  privateKeyLocation: #public key location
+  publicKeyLocation: #private key location

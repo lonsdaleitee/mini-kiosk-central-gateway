@@ -74,7 +74,7 @@ func main() {
 	fmt.Println("Connected to database successfully")
 
 	// Set up router
-	r := router.SetupRouter(db)
+	r := router.SetupRouter(db, cfg)
 
 	// Create and start server
 	srv := server.NewServer(r, cfg)

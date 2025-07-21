@@ -1,4 +1,4 @@
-.PHONY: setup migrate clean info validate new-migration new-repeatable build run test gateway-build gateway-run gateway-test
+.PHONY: setup migrate clean info validate new-migration new-repeatable build run test gateway-build gateway-run gateway-run-env gateway-dev gateway-sit gateway-staging gateway-prod gateway-test
 
 # Database migration commands
 migrate:
@@ -52,6 +52,39 @@ gateway-build:
 
 gateway-run: gateway-build
 	./bin/gateway
+
+# Run gateway application with specified environment
+# Usage: make gateway-run-env ENV=dev|sit|staging|prod|local
+# Example: make gateway-run-env ENV=dev
+gateway-run-env: gateway-build
+	@if [ -z "$(ENV)" ]; then \
+		echo "Error: ENV parameter is required. Usage: make gateway-run-env ENV=dev|sit|staging|prod|local"; \
+		exit 1; \
+	fi; \
+	if [ ! -f "configs/$(ENV).config.yaml" ]; then \
+		echo "Error: Configuration file configs/$(ENV).config.yaml not found"; \
+		echo "Available configurations: dev, local, prod, sit, staging"; \
+		exit 1; \
+	fi; \
+	echo "Running gateway with $(ENV) environment configuration..."; \
+	GATEWAY_CONFIG_ENV=$(ENV) ./bin/gateway
+
+# Convenience shortcuts for common environments
+gateway-dev: gateway-build
+	@echo "Running gateway with dev environment configuration..."
+	GATEWAY_CONFIG_ENV=dev ./bin/gateway
+
+gateway-sit: gateway-build
+	@echo "Running gateway with SIT environment configuration..."
+	GATEWAY_CONFIG_ENV=sit ./bin/gateway
+
+gateway-staging: gateway-build
+	@echo "Running gateway with staging environment configuration..."
+	GATEWAY_CONFIG_ENV=staging ./bin/gateway
+
+gateway-prod: gateway-build
+	@echo "Running gateway with production environment configuration..."
+	GATEWAY_CONFIG_ENV=prod ./bin/gateway
 
 gateway-test:
 	go test ./...

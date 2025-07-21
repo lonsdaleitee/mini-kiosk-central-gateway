@@ -1,24 +1,34 @@
 package handlers
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // AuthHandler handles authentication requests
 type AuthHandler struct {
-	db *sql.DB
+	db     *sql.DB
+	config *config.Config
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(db *sql.DB) *AuthHandler {
+func NewAuthHandler(db *sql.DB, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
-		db: db,
+		db:     db,
+		config: cfg,
 	}
 }
 
@@ -35,6 +45,24 @@ type RegisterRequest struct {
 type RegisterResponse struct {
 	ID      string `json:"id"`
 	Message string `json:"message"`
+}
+
+type Claims struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Fullname string `json:"full_name"`
+	jwt.RegisteredClaims
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int64  `json:"expires_in"`
 }
 
 // Register handles user registration
@@ -119,4 +147,176 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		ID:      userID,
 		Message: "User registered successfully",
 	})
+}
+
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Request"})
+		return
+	}
+
+	var userId, hashedPassword, firstName, lastName, email string
+	query := `SELECT id, password_hash, first_name, last_name, email FROM "user" WHERE username = $1`
+	err := h.db.QueryRow(query, req.Username).Scan(&userId, &hashedPassword, &firstName, &lastName, &email)
+
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password)) != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	claims := &Claims{
+		Username: req.Username,
+		Email:    email,
+		Fullname: firstName + " " + lastName,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	privateKey, err := LoadRSAPrivateKey(h.config.Keys.PrivateKeyPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read private key"})
+		return
+	}
+	accessToken, err := token.SignedString(privateKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+		return
+	}
+
+	refreshToken := uuid.New().String()
+
+	_, err = h.db.Exec(`
+		INSERT INTO "refresh_tokens"(user_id, token, expires_at)
+	VALUES ($1, $2, $3);
+	`, userId, refreshToken, time.Now().Add(7*24*time.Hour))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save new refresh token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    900,
+	})
+}
+
+// RefreshTokenRequest represents the request body for token refresh
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// RefreshToken handles access token refresh
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var req RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Validate refresh token from database
+	var userID string
+	var expiresAt time.Time
+
+	query := `
+		SELECT user_id, expires_at 
+		FROM refresh_tokens 
+		WHERE token = $1 AND expires_at > $2
+	`
+	err := h.db.QueryRow(query, req.RefreshToken, time.Now()).Scan(&userID, &expiresAt)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired refresh token"})
+		return
+	}
+
+	// Get user details for new access token
+	var username, email, firstName, lastName string
+	userQuery := `SELECT username, email, first_name, last_name FROM "user" WHERE id = $1`
+	err = h.db.QueryRow(userQuery, userID).Scan(&username, &email, &firstName, &lastName)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Generate new access token
+	claims := &Claims{
+		Username: username,
+		Email:    email,
+		Fullname: firstName + " " + lastName,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	privateKey, err := LoadRSAPrivateKey(h.config.Keys.PrivateKeyPath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read private key"})
+		return
+	}
+
+	newAccessToken, err := token.SignedString(privateKey)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate new token"})
+		return
+	}
+
+	// Update last_used_at
+	h.db.Exec(`UPDATE refresh_tokens SET last_used_at = $1 WHERE token = $2`, time.Now(), req.RefreshToken)
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": newAccessToken,
+		"expires_in":   900,
+	})
+}
+
+// Logout handles user logout by revoking refresh token
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var req RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Delete refresh token from database
+	_, err := h.db.Exec(`DELETE FROM refresh_tokens WHERE token = $1`, req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Logout failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
+	keyData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(keyData)
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
+}
+
+func LoadRSAPublicKey(path string) (*rsa.PublicKey, error) {
+	keyData, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(keyData)
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return pub.(*rsa.PublicKey), nil
 }

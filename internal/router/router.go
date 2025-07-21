@@ -4,12 +4,13 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/config"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/handlers"
 	"github.com/harrywijaya/mini-kiosk-central-gateway/internal/middleware"
 )
 
 // SetupRouter sets up the main router with all routes and middleware
-func SetupRouter(db *sql.DB) *gin.Engine {
+func SetupRouter(db *sql.DB, cfg *config.Config) *gin.Engine {
 	// Create Gin router
 	r := gin.New()
 
@@ -21,7 +22,7 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
-	authHandler := handlers.NewAuthHandler(db)
+	authHandler := handlers.NewAuthHandler(db, cfg)
 
 	// Health check routes
 	r.GET("/health", healthHandler.HealthCheck)
@@ -35,14 +36,15 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 			// Authentication routes (to be proxied to auth service)
 			auth := v1.Group("/auth")
 			{
-				auth.POST("/login", placeholderHandler("auth", "login"))
+				auth.POST("/login", authHandler.Login)
 				auth.POST("/register", authHandler.Register)
-				auth.POST("/logout", placeholderHandler("auth", "logout"))
-				auth.GET("/profile", placeholderHandler("auth", "profile"))
+				auth.POST("/logout", authHandler.Logout)
+				auth.GET("/refresh", authHandler.RefreshToken)
 			}
 
 			// Order routes (to be proxied to order service)
 			orders := v1.Group("/orders")
+			orders.Use(middleware.JWTAuthMiddleware(cfg.Keys.PublicKeyPath))
 			{
 				orders.GET("/", placeholderHandler("orders", "list"))
 				orders.POST("/", placeholderHandler("orders", "create"))
@@ -53,6 +55,7 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 
 			// Inventory routes (to be proxied to inventory service)
 			inventory := v1.Group("/inventory")
+			inventory.Use(middleware.JWTAuthMiddleware(cfg.Keys.PublicKeyPath))
 			{
 				inventory.GET("/", placeholderHandler("inventory", "list"))
 				inventory.GET("/:id", placeholderHandler("inventory", "get"))

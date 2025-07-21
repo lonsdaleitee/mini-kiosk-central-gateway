@@ -1,40 +1,43 @@
 server:
-  port: 8080
-  host: "localhost"
-  read_timeout: 30
-  write_timeout: 30
+  port: #"yourserverport"
+  host: #"yourhostport"
+  read_timeout: #"yourreadtimeoutconfig"
+  write_timeout: #"yourwritetimeoutconfig"
 
 database:
-  host: "localhost"
-  port: 5432
-  user: "harrywijaya"
-  password: ""
-  dbname: "central_gateway_mini_kiosk"
-  sslmode: "disable"
+  host: #"yourdatabaseservicehost"
+  port: #"yourdatabaseserviceport"
+  user: #"yourusername"
+  password: #"yourpassword"
+  dbname: #"yourdatabasename"
 
 services:
   auth_service:
-    base_url: "http://localhost:8081"
-    timeout: 30
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
   order_service:
-    base_url: "http://localhost:8082"
-    timeout: 30
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
   inventory_service:
-    base_url: "http://localhost:8083"
-    timeout: 30
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
   payment_service:
-    base_url: "http://localhost:8084"
-    timeout: 30
+    base_url: #"yourservicebaseurl"
+    timeout: #"yourservicetimeout"
 
 gin:
-  mode: "debug"
+  mode: "debug" #replace with release, test or gin provided mode
 
 flyway:
-  url: "jdbc:postgresql://localhost:5432/central_gateway_mini_kiosk"
-  user: "harrywijaya"
-  password:
-  locations: "filesystem:db/migrations"
-  connectRetries: 3
+  url: #your database JDBC url
+  user: #your database username
+  password: #your database password
+  locations: #your migration files location
+  connectRetries: 
   outOfOrder: false
   validateMigrationNaming: true
-  cleanDisabled: true
+  cleanDisabled: true #should be true, change if only no other workaround
+
+keys:
+  private_key_path: # Path to RSA private key for JWT signing
+  public_key_path: # Path to RSA public key for JWT verification

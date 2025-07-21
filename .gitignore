@@ -24,3 +24,8 @@ go.work.sum
 
 # env file
 .env
+privateKey.pem
+.gitignore
+publicKey.pem
+configs/local.config.yaml
+configs/local.config.yaml

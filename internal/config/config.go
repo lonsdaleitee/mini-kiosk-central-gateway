@@ -3,17 +3,19 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
 
 // Config holds application configuration
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Services ServicesConfig `mapstructure:"services"`
-	Gin      GinConfig      `mapstructure:"gin"`
-	Flyway   FlywayConfig   `mapstructure:"flyway"`
+	Server   ServerConfig     `mapstructure:"server"`
+	Database DatabaseConfig   `mapstructure:"database"`
+	Services ServicesConfig   `mapstructure:"services"`
+	Gin      GinConfig        `mapstructure:"gin"`
+	Flyway   FlywayConfig     `mapstructure:"flyway"`
+	Keys     PublicPrivateKey `mapstructure:"keys"`
 }
 
 // ServerConfig holds server configuration
@@ -64,9 +66,21 @@ type FlywayConfig struct {
 	ValidateMigrationNaming bool   `mapstructure:"validateMigrationNaming"`
 }
 
+type PublicPrivateKey struct {
+	PrivateKeyPath string `mapstructure:"private_key_path"`
+	PublicKeyPath  string `mapstructure:"public_key_path"`
+}
+
 // Load loads configuration from file and environment variables
 func Load() (*Config, error) {
-	viper.SetConfigName("local.config")
+	// Determine config file based on environment variable
+	configEnv := os.Getenv("GATEWAY_CONFIG_ENV")
+	if configEnv == "" {
+		configEnv = "local" // Default to local if not specified
+	}
+
+	configFileName := configEnv + ".config"
+	viper.SetConfigName(configFileName)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./configs")     // From project root
 	viper.AddConfigPath("../configs")    // From cmd/server
@@ -85,9 +99,9 @@ func Load() (*Config, error) {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("error reading config file: %w", err)
 		}
-		log.Println("No config file found, using defaults and environment variables")
+		log.Printf("No config file found for environment '%s', using defaults and environment variables", configEnv)
 	} else {
-		log.Printf("Using config file: %s", viper.ConfigFileUsed())
+		log.Printf("Using config file: %s (environment: %s)", viper.ConfigFileUsed(), configEnv)
 	}
 
 	var config Config
@@ -116,4 +130,8 @@ func setDefaults() {
 
 	// Gin defaults
 	viper.SetDefault("gin.mode", "debug")
+
+	// Key defaults
+	viper.SetDefault("keys.private_key_path", "privateKey.pem")
+	viper.SetDefault("keys.public_key_path", "publicKey.pem")
 }
